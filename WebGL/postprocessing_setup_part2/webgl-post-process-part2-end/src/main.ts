@@ -15,6 +15,21 @@ let postProcessVao: WebGLVertexArrayObject;
 let postProcessProgram: WebGLProgram;
 let framebuffer: WebGLFramebuffer;
 let framebufferTexture: WebGLTexture;
+let framebufferTextureLocation: WebGLUniformLocation;
+
+let vignetteTexture: WebGLTexture;
+let vignetteTextureLocation: WebGLUniformLocation;
+
+let noiseTexture: WebGLTexture;
+let noiseTextureLocation: WebGLUniformLocation;
+
+let scanlineTexture: WebGLTexture;
+let scanlineTextureLocation : WebGLUniformLocation;
+
+let randomLocation : WebGLUniformLocation;
+
+let time = 0;
+let timeLocation : WebGLUniformLocation;
 
 let materialProjectionMatrixLocation: WebGLUniformLocation;
 let materialViewMatrixLocation: WebGLUniformLocation;
@@ -34,6 +49,8 @@ function setup()
 
     quadSetup();
     postProcessSetup();
+
+    setupCRTMaterialTextures()
 
     // transparency
     gl.enable(gl.BLEND);
@@ -66,6 +83,24 @@ function postProcessSetup()
     framebufferSetup();
 }
 
+/**
+ * Setups the textures and material for CRT screen effect.
+ */
+function setupCRTMaterialTextures(): void 
+{
+    vignetteTexture = createTexture(document.getElementById("vignette-texture") as HTMLImageElement);
+    vignetteTextureLocation = gl.getUniformLocation(postProcessProgram, "texture1") as WebGLUniformLocation;
+
+    noiseTexture = createTexture(document.getElementById("noise-texture") as HTMLImageElement, false);
+    noiseTextureLocation = gl.getUniformLocation(postProcessProgram, "texture2") as WebGLUniformLocation; 
+
+    scanlineTexture = createTexture(document.getElementById("scanline-texture") as HTMLImageElement, false);
+    scanlineTextureLocation = gl.getUniformLocation(postProcessProgram, "texture3") as WebGLUniformLocation;
+
+    randomLocation = gl.getUniformLocation(postProcessProgram, "random") as WebGLUniformLocation;
+
+    timeLocation = gl.getUniformLocation(postProcessProgram, "time") as WebGLUniformLocation;
+}
 
 
 function framebufferSetup()
@@ -73,6 +108,7 @@ function framebufferSetup()
     // POST PROCESS  
     // 1. first we need an empty texture, to which to render the scene.
     framebufferTexture = createTexture(canvas);
+    framebufferTextureLocation = gl.getUniformLocation(postProcessProgram, "texture0") as WebGLUniformLocation;
 
     // 2. create framebuffer and add texture to color attachment 0
     framebuffer = gl.createFramebuffer()!;
@@ -190,7 +226,7 @@ function createVAO(data: Float32Array, indicesData: Uint8Array): WebGLVertexArra
     return vao;
 }
 
-function createTexture(imageOrCanvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture
+function createTexture(imageOrCanvas: HTMLImageElement | HTMLCanvasElement, clampToEdge = true ): WebGLTexture
 {
     const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -206,15 +242,27 @@ function createTexture(imageOrCanvas: HTMLImageElement | HTMLCanvasElement): Web
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    if(clampToEdge)
+    {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+    else 
+    {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    }
 
     return texture;
 }
 
 function draw()
 {
+    time += Math.random() * 0.001;
+
     // draw to texture of framebuffer.
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
     // clear contents of framewbuffer.
@@ -226,12 +274,35 @@ function draw()
 
     // now draw to screen buffer.
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    
+
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.clearColor(clearColor.r, clearColor.g, clearColor.b, 1);
     gl.bindVertexArray(postProcessVao);
     gl.useProgram(postProcessProgram);
+
+    gl.uniform1f(randomLocation, Math.random() * 2 - 1);
+    gl.uniform1f(timeLocation, time);
+
+    // scene
+    gl.uniform1i(framebufferTextureLocation, 0);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, framebufferTexture);
+
+    // vignette 
+    gl.uniform1i(vignetteTextureLocation, 1);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, vignetteTexture);
+
+    // noise
+    gl.uniform1i(noiseTextureLocation, 2);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
+
+    // scanline
+    gl.uniform1i(scanlineTextureLocation, 3);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, scanlineTexture);
+
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
 
     requestAnimationFrame(draw);
