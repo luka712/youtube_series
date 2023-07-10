@@ -5,9 +5,6 @@ class Renderer {
 
   private context!: GPUCanvasContext;
   private device!: GPUDevice;
-
-  private positionBuffer!: GPUBuffer;
-  private colorsBuffer!: GPUBuffer;
   private pipeline!: GPURenderPipeline;
 
   constructor() {
@@ -44,77 +41,25 @@ class Renderer {
 
   }
 
-  private createBuffer(data: Float32Array): GPUBuffer {
-    const buffer = this.device.createBuffer({
-      size: data.byteLength,
-      usage: GPUBufferUsage.VERTEX,
-      mappedAtCreation: true
-    });
-
-    new Float32Array(buffer.getMappedRange()).set(data);
-    buffer.unmap();
-
-    return buffer;
-  }
-
   private prepareModel(): void {
-
-    // Create positions buffer
-    this.positionBuffer = this.createBuffer(new Float32Array([
-      -0.5, -0.5,
-      -0.5, 0.5,
-      0.5, -0.5
-    ]));
-
-    // Create color buffer.
-    this.colorsBuffer = this.createBuffer(new Float32Array([
-      1, 0, 0,
-      0, 1, 0,
-      0, 0, 1
-    ]));
-
 
     const shaderModule = this.device.createShaderModule({
       code: shaderSource
     });
 
-    const positionBufferLayout: GPUVertexBufferLayout = {
-      arrayStride: 4 * 2,
-      attributes: [
-        {
-          shaderLocation: 0,
-          offset: 0,
-          format: "float32x2"
-        },
-      ]
-    };
-
-    const colorBufferLayout: GPUVertexBufferLayout = {
-      arrayStride: 4 * 3,
-      attributes: [
-        {
-          shaderLocation: 1,
-          offset: 0,
-          format: "float32x3"
-        },
-      ]
-    };
 
     const vertexState: GPUVertexState = {
       module: shaderModule,
-      entryPoint: "vertexMain",
-      buffers: [
-        positionBufferLayout,
-        colorBufferLayout
-      ]
+      entryPoint: "vertexMain", // name of the entry point function for vertex shader, must be same as in shader
+      buffers: []
     };
 
     const fragmentState: GPUFragmentState = {
       module: shaderModule,
-      entryPoint: "fragmentMain",
+      entryPoint: "fragmentMain", // name of the entry point function for fragment/pixel shader, must be same as in shader
       targets: [
         {
-          format: navigator.gpu.getPreferredCanvasFormat()
+          format: navigator.gpu.getPreferredCanvasFormat() 
         }
       ]
     };
@@ -123,7 +68,7 @@ class Renderer {
       vertex: vertexState,
       fragment: fragmentState,
       primitive: {
-        topology: "triangle-list"
+        topology: "triangle-list" // type of primitive to render
       },
       layout: "auto",
     });
@@ -149,9 +94,7 @@ class Renderer {
 
     // DRAW HERE
     passEncoder.setPipeline(this.pipeline);
-    passEncoder.setVertexBuffer(0, this.positionBuffer);
-    passEncoder.setVertexBuffer(1, this.colorsBuffer);
-    passEncoder.draw(3);
+    passEncoder.draw(3); // draw 3 vertices
 
     passEncoder.end();
     this.device.queue.submit([commandEncoder.finish()]);
