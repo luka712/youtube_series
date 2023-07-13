@@ -150,6 +150,7 @@ class Renderer {
     }
 
     public draw(): void {
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         this.gl.clearColor(0.8, 0.8, 0.8, 1);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
