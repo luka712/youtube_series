@@ -43,7 +43,6 @@ export class BulletManager
 
     public update(dt: number)
     {
-
         this.time += dt;
         if(this.time > SPAWN_TIME)
         {
