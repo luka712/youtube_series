@@ -1,9 +1,12 @@
+import { vec2 } from "gl-matrix";
+import { Content } from "./content";
 import { Engine } from "./engine";
 import { Background } from "./game/background";
 import { BulletManager } from "./game/bullet-manager";
 import { EnemyManager } from "./game/enemy-manager";
 import { ExplosionManager } from "./game/explosion-manager";
 import { Player } from "./game/player";
+import { Color } from "./color";
 import { HighScore } from "./game/high-score";
 
 const engine = new Engine();
@@ -22,18 +25,19 @@ engine.initialize().then(async () => {
         engine.gameBounds[0], engine.gameBounds[1],
         highScore);
 
-    const blurEffect = await engine.effectsFactory.createBlurEffect();
+    const postProcessEffect = await engine.effectsFactory.createBlurEffect();
+        postProcessEffect.doHorizontalPass = true;
+        postProcessEffect.doVerticalPass = true;
 
     document.getElementById("horizontal")?.addEventListener("click", (e) => {
-        blurEffect.doHorizontalPass = !blurEffect.doHorizontalPass;
-        (e.target as HTMLInputElement).checked = blurEffect.doHorizontalPass;
+        postProcessEffect.doHorizontalPass = !postProcessEffect.doHorizontalPass;
+        (e.target as HTMLInputElement).checked = postProcessEffect.doHorizontalPass;
     });
 
     document.getElementById("vertical")?.addEventListener("click", (e) => {
-        blurEffect.doVerticalPass = !blurEffect.doVerticalPass;
-        (e.target as HTMLInputElement).checked = blurEffect.doVerticalPass;
+        postProcessEffect.doVerticalPass = !postProcessEffect.doVerticalPass;
+        (e.target as HTMLInputElement).checked = postProcessEffect.doVerticalPass;
     });
-
 
     engine.onUpdate = (dt: number) => {
         player.update(dt);
@@ -45,13 +49,12 @@ engine.initialize().then(async () => {
 
     engine.onDraw = () => {
 
-        if (blurEffect.doVerticalPass || blurEffect.doHorizontalPass) {
-            engine.setDestinationTexture(blurEffect.getRenderTexture()!.texture);
+        if (postProcessEffect.getRenderTexture()) {
+            engine.setDestinationTexture(postProcessEffect.getRenderTexture()!.texture);
         }
         else {
-            engine.setDestinationTexture(undefined);
+            engine.setDestinationTexture(null);
         }
-
         background.draw(engine.spriteRenderer);
         player.draw(engine.spriteRenderer);
         enemyManager.draw(engine.spriteRenderer);
@@ -60,8 +63,8 @@ engine.initialize().then(async () => {
 
         highScore.draw(engine.spriteRenderer);
 
-        if (blurEffect.doVerticalPass || blurEffect.doHorizontalPass) {
-            blurEffect.draw(engine.getCanvasTexture().createView());
+        if (postProcessEffect.getRenderTexture()) {
+            postProcessEffect.draw(engine.getCanvasTexture().createView());
         }
     };
 
