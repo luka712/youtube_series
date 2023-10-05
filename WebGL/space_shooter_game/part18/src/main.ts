@@ -26,7 +26,7 @@ engine.initialize().then(() => 
         highScore);
 
     const blurEffect = engine.effectsFactory.createBlurEffect();
-
+  
     document.getElementById("horizontal")?.addEventListener("click", (e) => {
         blurEffect.doHorizontalPass = !blurEffect.doHorizontalPass;
         (e.target as HTMLInputElement).checked = blurEffect.doHorizontalPass;
@@ -36,8 +36,6 @@ engine.initialize().then(() => 
         blurEffect.doVerticalPass = !blurEffect.doVerticalPass;
         (e.target as HTMLInputElement).checked = blurEffect.doVerticalPass;
     });
-
-
 
     engine.onUpdate = (dt) => {
         background.update(dt);

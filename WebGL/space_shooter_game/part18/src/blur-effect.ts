@@ -8,16 +8,19 @@ import fragmentShaderSource2 from "./shaders/postProcessBlurVerticalPass.glsl?ra
 export class BlurEffect {
 
     private glHorizontalPassProgram: WebGLProgram;
+    private glHorizontalFramebuffer: WebGLFramebuffer;
+    private glHorizontalTexture: WebGLTexture;
+
     private glVerticalPassProgram: WebGLProgram;
-
-    private glFramebuffer: WebGLFramebuffer;
-    private glTexture: WebGLTexture;
-
-    private vao: WebGLVertexArrayObject;
-    private buffer: WebGLBuffer;
+    private glVerticalFramebuffer: WebGLFramebuffer;
+    private glVerticalTexture: WebGLTexture;
 
     public doHorizontalPass = true;
     public doVerticalPass = true;
+
+
+    private vao: WebGLVertexArrayObject;
+    private buffer: WebGLBuffer;
 
     constructor(private gl: WebGL2RenderingContext,
         private width: number,
@@ -31,8 +34,12 @@ export class BlurEffect {
         this.glVerticalPassProgram = ProgramUtil.createProgram(gl, vShader, fShader2);
 
         const result = FramebufferUtil.createFramebuffer(gl, width, height);
-        this.glFramebuffer = result.glFramebuffer!;
-        this.glTexture = result.glTexture!;
+        this.glHorizontalFramebuffer = result.glFramebuffer!;
+        this.glHorizontalTexture = result.glTexture!;
+
+        const result2 = FramebufferUtil.createFramebuffer(gl, width, height);
+        this.glVerticalFramebuffer = result2.glFramebuffer!;
+        this.glVerticalTexture = result2.glTexture!;
 
         this.vao = gl.createVertexArray()!;
         gl.bindVertexArray(this.vao);
@@ -69,39 +76,51 @@ export class BlurEffect {
     }
 
     public bind() {
-
-        if (this.doHorizontalPass || this.doVerticalPass) {
-            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.glFramebuffer);
-            this.gl.clearColor(1, 0, 0, 1);
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        // if we are doing both passes, we need to bind the horizontal framebuffer
+        if (this.doHorizontalPass) {
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.glHorizontalFramebuffer);
+        }
+        else if (this.doVerticalPass) {
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.glVerticalFramebuffer);
         }
     }
 
     public draw() {
 
+        if (this.doHorizontalPass) {
 
-        if (this.doHorizontalPass || this.doVerticalPass) {
-            // back to default buffer/texture, which is canvas 
+            // if we are doing verical pass draw to the vertical framebuffer
+            if (this.doVerticalPass) {
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.glVerticalFramebuffer);
+            }
+            else {
+                // back to default buffer/texture, which is canvas 
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+            }
+
+            this.gl.useProgram(this.glHorizontalPassProgram);
+            this.gl.bindVertexArray(this.vao);
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.glHorizontalTexture);
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+
+        }
+
+        if (this.doVerticalPass) {
+
+            // VERTICAL PASS 
             this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 
-            if (this.doHorizontalPass) {
-                this.gl.useProgram(this.glHorizontalPassProgram);
-                this.gl.bindVertexArray(this.vao);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-
-            if (this.doVerticalPass) {
-                this.gl.useProgram(this.glVerticalPassProgram);
-                this.gl.bindVertexArray(this.vao);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            // cleanup 
-            this.gl.bindVertexArray(null);
-            this.gl.bindTexture(this.gl.TEXTURE_2D, null);
-            this.gl.useProgram(null);
+            this.gl.useProgram(this.glVerticalPassProgram);
+            this.gl.bindVertexArray(this.vao);
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.glVerticalTexture);
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
         }
+
+        
+        // cleanup 
+        this.gl.bindVertexArray(null);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+        this.gl.useProgram(null);
     }
 
 }
