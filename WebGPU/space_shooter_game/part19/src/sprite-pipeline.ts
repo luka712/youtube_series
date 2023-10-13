@@ -77,7 +77,7 @@ export class SpritePipeline
                 }
               },
               {
-                format: "bgra8unorm",
+                format: navigator.gpu.getPreferredCanvasFormat(),
                 blend: {
                   color: {
                     srcFactor: "src-alpha",

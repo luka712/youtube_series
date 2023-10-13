@@ -25,9 +25,15 @@ export class Engine {
 
   // if this is null, we are rendering to the screen
   private destinationTexture?: GPUTexture | null = null;
+  private destinationTexture2?: GPUTexture | null = null;
 
-  public setDestinationTexture(texture?: GPUTexture): void {
+
+  public setDestinationTexture(texture?: GPUTexture, ): void {
     this.destinationTexture = texture;
+  }
+
+  public setDestinationTexture2(texture?: GPUTexture, ): void {
+    this.destinationTexture2 = texture;
   }
 
   public getCanvasTexture() : GPUTexture
@@ -35,7 +41,7 @@ export class Engine {
     return this.context.getCurrentTexture();
   }
 
-  public brightnessTexture!: Texture;
+  public brightnessTexture2!: Texture;
 
   public async initialize(): Promise<void> {
 
@@ -74,7 +80,7 @@ export class Engine {
     this.inputManager = new InputManager();
     this.effectsFactory = new EffectsFactory(this.device, this.canvas.width, this.canvas.height);
 
-    this.brightnessTexture = await Texture.createEmptyTexture(this.device, this.canvas.width, this.canvas.height, "bgra8unorm");
+    this.destinationTexture2 = (await Texture.createEmptyTexture(this.device, this.canvas.width, this.canvas.height, "bgra8unorm")).texture;
   }
 
   public draw(): void {
@@ -87,7 +93,7 @@ export class Engine {
 
     const commandEncoder = this.device.createCommandEncoder();
 
-    const textureView = this.destinationTexture != null ? 
+    const sceneTextureView = this.destinationTexture != null ? 
       this.destinationTexture.createView() :
       this.context.getCurrentTexture().createView();
 
@@ -97,13 +103,13 @@ export class Engine {
           clearValue: { r: 0.8, g: 0.8, b: 0.8, a: 1.0 },
           loadOp: "clear",
           storeOp: "store",
-          view: textureView
+          view: sceneTextureView
         },
         {
           clearValue: { r: 0.8, g: 0.8, b: 0.8, a: 1.0 },
           loadOp: "clear",
           storeOp: "store",
-          view: this.brightnessTexture.texture.createView()
+          view: this.destinationTexture2!.createView()
         }
       ]
     };

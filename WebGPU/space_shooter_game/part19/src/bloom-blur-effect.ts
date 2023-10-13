@@ -2,18 +2,13 @@ import { BufferUtil } from "./buffer-util";
 import { Texture } from "./texture";
 import shaderSource from "./shaders/blur-effect.wgsl?raw"
 
-export class BlurEffect {
+export class BloomBlurEffect {
 
     private horizontalPassPipeline!: GPURenderPipeline;
-    private horizontalPassRenderTexture!: Texture;
-    private horizontalPassBindGroup!: GPUBindGroup;
-
     private verticalPassPipeline!: GPURenderPipeline;
-    private verticalPassRenderTexture!: Texture;
-    private verticalPassBindGroup!: GPUBindGroup;
 
-    public doHorizontalPass = true;
-    public doVerticalPass = true;
+    private pingPongTexture!: Texture;
+    private pingPongBindGroup!: GPUBindGroup;
 
     private createPipeline(shaderSource: string,
         textureBindGroupLayout: GPUBindGroupLayout,
@@ -69,11 +64,6 @@ export class BlurEffect {
     private gpuBuffer!: GPUBuffer;
 
 
-
-    public getRenderTexture(): Texture | null {
-        return this.horizontalPassRenderTexture;
-    }
-
     constructor(private device: GPUDevice,
         public width: number,
         public height: number) {
@@ -81,8 +71,7 @@ export class BlurEffect {
     }
 
     public async initialize() {
-        this.horizontalPassRenderTexture = await Texture.createEmptyTexture(this.device, this.width, this.height, "bgra8unorm");
-        this.verticalPassRenderTexture = await Texture.createEmptyTexture(this.device, this.width, this.height, "bgra8unorm");
+        this.pingPongTexture = await Texture.createEmptyTexture(this.device, this.width, this.height, "bgra8unorm");
 
         this.gpuBuffer = BufferUtil.createVertexBuffer(this.device, new Float32Array([
             // pos(x,y) tex(u,v)
@@ -119,30 +108,16 @@ export class BlurEffect {
             ]
         });
 
-        this.horizontalPassBindGroup = this.device.createBindGroup({
+        this.pingPongBindGroup = this.device.createBindGroup({
             layout: textureBindGroupLayout,
             entries: [
                 {
                     binding: 0,
-                    resource: this.horizontalPassRenderTexture.sampler
+                    resource: this.pingPongTexture.sampler
                 },
                 {
                     binding: 1,
-                    resource: this.horizontalPassRenderTexture.texture.createView()
-                }
-            ]
-        });
-
-        this.verticalPassBindGroup = this.device.createBindGroup({
-            layout: textureBindGroupLayout,
-            entries: [
-                {
-                    binding: 0,
-                    resource: this.verticalPassRenderTexture.sampler
-                },
-                {
-                    binding: 1,
-                    resource: this.verticalPassRenderTexture.texture.createView()
+                    resource: this.pingPongTexture.texture.createView()
                 }
             ]
         });
@@ -152,14 +127,14 @@ export class BlurEffect {
         this.verticalPassPipeline = this.createPipeline(shaderSource, textureBindGroupLayout, false);
     }
 
-    public draw(textureToApplyEffectTo: GPUTextureView) {
+    public draw(textureToApplyEffectTo: GPUTextureView, textureToApplyEffectToBindGroup: GPUBindGroup) {
 
         // HORIZONTAL PASS 
         const horizontalCommandEncoder = this.device.createCommandEncoder();
         const horizontalPassEncoder = horizontalCommandEncoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view: this.verticalPassRenderTexture.texture.createView(),
+                    view: this.pingPongTexture.texture.createView(),
                     loadOp: "clear",
                     storeOp: "store",
                 }
@@ -168,15 +143,14 @@ export class BlurEffect {
 
         horizontalPassEncoder.setPipeline(this.horizontalPassPipeline);
         horizontalPassEncoder.setVertexBuffer(0, this.gpuBuffer);
-        // We actually don't even need this, but keep it here for completeness.
-        horizontalPassEncoder.setBindGroup(0, this.horizontalPassBindGroup);
+        horizontalPassEncoder.setBindGroup(0, textureToApplyEffectToBindGroup);
         horizontalPassEncoder.draw(6, 1, 0, 0);
 
         horizontalPassEncoder.end();
         this.device.queue.submit([horizontalCommandEncoder.finish()]);
 
 
-        // VERTICAL PASS
+        // VERTICAL PASS 
         const verticalCommandEncoder = this.device.createCommandEncoder();
         const verticalPassEncoder = verticalCommandEncoder.beginRenderPass({
             colorAttachments: [
@@ -190,7 +164,7 @@ export class BlurEffect {
 
         verticalPassEncoder.setPipeline(this.verticalPassPipeline);
         verticalPassEncoder.setVertexBuffer(0, this.gpuBuffer);
-        verticalPassEncoder.setBindGroup(0, this.verticalPassBindGroup);
+        verticalPassEncoder.setBindGroup(0, this.pingPongBindGroup);
         verticalPassEncoder.draw(6, 1, 0, 0);
 
         verticalPassEncoder.end();

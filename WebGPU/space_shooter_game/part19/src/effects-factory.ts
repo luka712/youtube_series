@@ -1,3 +1,4 @@
+import { BloomEffect } from "./bloom-effect";
 import { BlurEffect } from "./blur-effect";
 import { PostProcessEffect } from "./post-process-effect";
 import { TextureEffect } from "./texture-effect";
@@ -23,6 +24,12 @@ export class EffectsFactory {
 
     public async createBlurEffect(): Promise<BlurEffect> {
         const effect = new BlurEffect(this.device, this.width, this.height);
+        await effect.initialize();
+        return effect;
+    }
+
+    public async createBloomEffect(): Promise<BloomEffect> {
+        const effect = new BloomEffect(this.device, this.width, this.height);
         await effect.initialize();
         return effect;
     }

@@ -38,7 +38,7 @@ fn fragmentMainHorizontal(fragData: VertexOut ) -> @location(0) vec4f
     var horizontalTexel = 1.0 / f32(textureDimensions(tex).x);
     var result  = textureSample(tex, texSampler, fragData.texCoords) * weights[0];
 
-    for(var i = 1; i < 4; i++)
+    for(var i = 1; i < 5; i++)
     {
         var offset = vec2f(horizontalTexel * f32(i), 0.0);
 
@@ -58,7 +58,7 @@ fn fragmentMainVertical(fragData: VertexOut ) -> @location(0) vec4f
     var verticalTexel = 1.0 / f32(textureDimensions(tex).y);
     var result  = textureSample(tex, texSampler, fragData.texCoords) * weights[0];
 
-    for(var i = 1; i < 4; i++)
+    for(var i = 1; i < 5; i++)
     {
         var offset = vec2f(0.0, verticalTexel * f32(i));
 
