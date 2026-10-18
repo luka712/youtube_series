@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KTX2 loading with raw WebGL2</title>
+    <style>
+      body { margin: 0; background: #202020; color: #eee; font-family: sans-serif; }
+      canvas { display: block; margin: 60px auto 0; }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <!-- Khronos libktx read-only web build from the KTX-Software v4.4.2 release (KTX-Software-4.4.2-Web-libktx_read.zip). Defines the global LIBKTX and loads libktx_read.wasm next to it. -->
+    <script src="/libktx_read.js"></script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
